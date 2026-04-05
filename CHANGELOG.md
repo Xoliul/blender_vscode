@@ -2,9 +2,11 @@
 
 ## Unreleased
 
+## [0.0.31] - 2026-04-05
+
 ### Fixed
 
-* Pin axios to 1.14.0 to avoid security issues.
+* Pin axios to 1.14.0 to avoid security issues (official releases where not affected).
 
 ## [0.0.30] - 2025-12-20
 
