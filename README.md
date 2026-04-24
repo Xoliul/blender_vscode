@@ -203,6 +203,7 @@ This fork ships an optional standalone service designed for rapid Blender iterat
 - **Editor agnostic**: works even when your editor cannot host VS Code extensions (for example Cursor).
 - **Flexible runtime**: launch Blender from the service or connect to a Blender instance that is already running.
 - **Fast feedback**: send reload requests without restarting your whole toolchain.
+- **One-click start**: run `standalone/start-standalone.bat` (Windows) or `standalone/start-standalone.command` (macOS). The launcher checks Node/npm, installs dependencies, builds UI if needed, then starts the service.
 
 See [`standalone/README.md`](./standalone/README.md) for setup and usage.
 

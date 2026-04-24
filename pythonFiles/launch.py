@@ -19,6 +19,20 @@ LOG = blender_vscode.log.getLogger()
 LOG.info(f"ADDONS_TO_LOAD {json.loads(os.environ['ADDONS_TO_LOAD'])}")
 
 try:
+    recovery_blend = str(os.environ.get("BLENDER_VSCODE_RECOVERY_BLEND", "")).strip()
+    if recovery_blend:
+        import bpy
+
+        def _recover_autosave():
+            try:
+                # Use Blender's own recovery flow so the session remains tied to the original file.
+                bpy.ops.wm.recover_auto_save(filepath=recovery_blend)
+            except Exception:
+                LOG.exception("Failed to recover autosave file")
+            return None
+
+        bpy.app.timers.register(_recover_autosave, first_interval=0.1)
+
     addons_to_load = []
     for info in json.loads(os.environ["ADDONS_TO_LOAD"]):
         addon_info = blender_vscode.AddonInfo(**info)

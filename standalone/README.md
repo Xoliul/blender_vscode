@@ -4,15 +4,23 @@ Standalone local service that launches or attaches to Blender, watches addon sou
 
 ## Quick start
 
-1. Install dependencies:
-   - `cd standalone`
-   - `npm install`
-2. Build control page:
-   - `npm run build:ui`
-3. Start service:
-   - `npm run dev`
-4. Open control page:
-   - [http://127.0.0.1:19321](http://127.0.0.1:19321)
+Run a single launcher file and it will verify Node/npm, install dependencies if missing, build the UI if needed, then start the service:
+
+- Windows: `start-standalone.bat`
+- macOS: `start-standalone.command`
+
+Both launchers open the control page at [http://127.0.0.1:19321](http://127.0.0.1:19321).
+
+On macOS, if needed once:
+
+- `chmod +x start-standalone.command`
+
+Manual fallback:
+
+1. `cd standalone`
+2. `npm install`
+3. `npm run build:ui`
+4. `npm run dev`
 
 ## Ports
 

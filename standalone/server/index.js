@@ -40,6 +40,7 @@ let blenderStopRequested = false;
 let blenderCrashSuspected = false;
 let restartAttempt = 0;
 let lastReadBlendPath = null;
+let lastCanonicalBlendPath = null;
 let lastCrashReportPath = null;
 
 const defaultConfig = {
@@ -107,12 +108,27 @@ function updateCrashContextFromLog(message) {
   const text = String(message || "");
   const readMatch = text.match(/Read blend:\s*"([^"]+)"/i);
   if (readMatch) {
-    lastReadBlendPath = readMatch[1];
+    const readPath = readMatch[1];
+    lastReadBlendPath = readPath;
+    if (!isLikelyRecoveryBlendPath(readPath)) {
+      lastCanonicalBlendPath = readPath;
+    }
   }
   const crashMatch = text.match(/Writing:\s*([^\r\n]+\.crash\.txt)/i);
   if (crashMatch) {
     lastCrashReportPath = crashMatch[1].trim();
   }
+}
+
+function isLikelyRecoveryBlendPath(filePath) {
+  const normalized = String(filePath || "").toLowerCase();
+  if (!normalized) {
+    return false;
+  }
+  const baseName = path.basename(normalized);
+  return baseName.includes("autosave")
+    || baseName.includes("recover")
+    || /\.blend\d+$/.test(baseName);
 }
 
 async function getLatestBlendCandidateInDir(directoryPath, preferredBaseName = "") {
@@ -156,7 +172,8 @@ async function findLatestRecoveryBlend() {
     checks.push(siblingBlend);
   }
 
-  const preferredBaseName = lastReadBlendPath ? path.basename(lastReadBlendPath, ".blend") : "";
+  const preferredSourcePath = lastCanonicalBlendPath || lastReadBlendPath;
+  const preferredBaseName = preferredSourcePath ? path.basename(preferredSourcePath, ".blend") : "";
   const tempDirs = [
     process.env.TEMP,
     process.env.TMP,
@@ -170,8 +187,8 @@ async function findLatestRecoveryBlend() {
     }
   }
 
-  if (lastReadBlendPath) {
-    const sourceDir = path.dirname(lastReadBlendPath);
+  if (preferredSourcePath) {
+    const sourceDir = path.dirname(preferredSourcePath);
     const latestNearSource = await getLatestBlendCandidateInDir(sourceDir, preferredBaseName);
     if (latestNearSource) {
       checks.push(latestNearSource);
@@ -565,7 +582,7 @@ async function performReload(reason = "manual") {
   }
 }
 
-function getBlenderEnv() {
+function getBlenderEnv(recoveryBlendPath = null) {
   const addonsToLoad = getNormalizedAddons().map((entry) => ({
     load_dir: entry.loadDir,
     module_name: entry.moduleName
@@ -578,7 +595,8 @@ function getBlenderEnv() {
     VSCODE_LOG_LEVEL: "debug",
     VSCODE_WAIT_FOR_DEBUGGER: "0",
     EDITOR_PORT: String(editorPort),
-    VSCODE_IDENTIFIER: "standalone-service"
+    VSCODE_IDENTIFIER: "standalone-service",
+    BLENDER_VSCODE_RECOVERY_BLEND: recoveryBlendPath ? String(recoveryBlendPath) : ""
   };
 }
 
@@ -589,12 +607,8 @@ async function startBlender(recoveryBlendPath = null) {
   if (!config.blenderExecutable) {
     throw new Error("Set blenderExecutable in config first");
   }
-  const args = [];
-  if (recoveryBlendPath) {
-    args.push(recoveryBlendPath);
-  }
-  args.push("--python", launchPyPath, ...config.blenderArgs);
-  const env = getBlenderEnv();
+  const args = ["--python", launchPyPath, ...config.blenderArgs];
+  const env = getBlenderEnv(recoveryBlendPath);
 
   blenderStopRequested = false;
   blenderCrashSuspected = false;
