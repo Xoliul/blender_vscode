@@ -7,6 +7,10 @@
 
 **Blender addon development with python debugger.** Everything you need is available through the `Blender` command palette menu (press `Ctrl+Shift+P`).
 
+> [!IMPORTANT]
+> This repository is a fork of `blender_vscode` that adds a **Standalone Reload Service** for editor-agnostic workflows.
+> Think of it like a Vite-style companion process for Blender addon development: always on, watching your files, and ready to trigger reloads fast.
+
 ## Table of Contents
 - [Blender VS Code](#blender-vs-code)
   - [Table of Contents](#table-of-contents)
@@ -193,9 +197,14 @@ Add shorcuts by editing `keybindings.json` (`crtl+shift+p` and search for `Prefe
 - Enable debug logs via [`blender.addon.logLevel`](vscode://settings/blender.addon.logLevel) and inspect the `Blender` output channel in VS Code.
 
 ## Standalone Reload Service (experimental)
-- A VS Code-independent auto-reload workflow is available in [`standalone/README.md`](./standalone/README.md).
-- It can launch Blender or attach to a running Blender instance, watch addon files, and issue reload requests.
-- This path is useful when your editor does not run VS Code extensions directly (for example Cursor).
+This fork ships an optional standalone service designed for rapid Blender iteration outside the VS Code extension runtime.
+
+- **Vite-like dev loop**: run a background service that continuously watches your addon files and reacts quickly to changes.
+- **Editor agnostic**: works even when your editor cannot host VS Code extensions (for example Cursor).
+- **Flexible runtime**: launch Blender from the service or connect to a Blender instance that is already running.
+- **Fast feedback**: send reload requests without restarting your whole toolchain.
+
+See [`standalone/README.md`](./standalone/README.md) for setup and usage.
 
 ## Status & Contribution
 - The extension is no longer in active feature development.
