@@ -1,0 +1,20 @@
+{
+  "name": "blender-reload-standalone",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node ./server/index.js",
+    "dev:ui": "vite --config ./frontend/vite.config.js",
+    "build:ui": "vite build --config ./frontend/vite.config.js"
+  },
+  "dependencies": {
+    "chokidar": "^4.0.3",
+    "cors": "^2.8.5",
+    "express": "^4.21.2",
+    "node-fetch": "^3.3.2"
+  },
+  "devDependencies": {
+    "vite": "^7.1.12"
+  }
+}

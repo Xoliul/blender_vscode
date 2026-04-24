@@ -192,6 +192,11 @@ Add shorcuts by editing `keybindings.json` (`crtl+shift+p` and search for `Prefe
 - Search issues on GitHub before filing a new one.
 - Enable debug logs via [`blender.addon.logLevel`](vscode://settings/blender.addon.logLevel) and inspect the `Blender` output channel in VS Code.
 
+## Standalone Reload Service (experimental)
+- A VS Code-independent auto-reload workflow is available in [`standalone/README.md`](./standalone/README.md).
+- It can launch Blender or attach to a running Blender instance, watch addon files, and issue reload requests.
+- This path is useful when your editor does not run VS Code extensions directly (for example Cursor).
+
 ## Status & Contribution
 - The extension is no longer in active feature development.
 - Bugs are welcome; please file issues with as much detail as possible.

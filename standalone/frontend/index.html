@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Blender Reload Service</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <main>
+      <h1>Blender Reload Service</h1>
+      <section>
+        <h2>🟢 Connection</h2>
+        <p id="connection-state" class="status status-disconnected">Disconnected</p>
+        <label class="inline-check">
+          <input id="auto-restart-crash" type="checkbox" />
+          Auto restart on crash
+        </label>
+        <label class="inline-check">
+          <input id="open-autosave-on-crash" type="checkbox" />
+          Open latest autosave/recovery on crash
+        </label>
+        <div class="row">
+          <button id="start-btn">▶️ Start</button>
+          <button id="stop-btn">⏹️ Stop</button>
+          <button id="reload-btn">🔄 Reload</button>
+        </div>
+      </section>
+
+      <section>
+        <h2>🔌 Attach</h2>
+        <div class="row">
+          <input id="attach-host" placeholder="Host" value="127.0.0.1" />
+          <input id="attach-port" placeholder="Port" type="number" />
+          <button id="attach-btn">🔗 Attach</button>
+        </div>
+        <div class="row">
+          <button id="scan-running-btn">🔎 Scan Running</button>
+          <select id="running-select"></select>
+          <button id="attach-selected-btn">✅ Attach Selected</button>
+        </div>
+      </section>
+
+      <section>
+        <h2>⚙️ Config</h2>
+        <label>
+          Blender Executable
+          <input id="blender-exe" placeholder="C:\\Program Files\\Blender Foundation\\Blender 4.2\\blender.exe" />
+        </label>
+        <div class="row">
+          <button id="scan-installs-btn">🔎 Scan Installs</button>
+          <select id="installs-select"></select>
+          <button id="use-install-btn">📌 Use Selected</button>
+        </div>
+        <label>
+          Blender Args (JSON array)
+          <input id="blender-args" placeholder='["--factory-startup"]' />
+        </label>
+        <label>
+          Watch Debounce (ms)
+          <input id="watch-debounce" type="number" />
+        </label>
+        <label>
+          Pre-Reload Command
+          <input id="pre-reload-cmd" placeholder="npm run build:addon" />
+        </label>
+        <div>
+          <label>Addons To Monitor</label>
+          <small>One row per addon. Paste full absolute paths. Usually keep module as auto.</small>
+          <div id="addon-rows"></div>
+          <div class="row row-compact">
+            <button id="add-addon-row-btn" type="button" class="btn-compact">➕ Add Entry</button>
+            <button id="addons-example-btn" type="button" class="btn-compact">🧩 Insert Example</button>
+            <span></span>
+          </div>
+        </div>
+        <button id="save-config-btn">💾 Save Config</button>
+      </section>
+
+      <section>
+        <div class="section-header">
+          <h2>📋 Logs</h2>
+          <button id="clear-logs-btn" type="button" class="btn-icon" title="Clear logs">🗑️</button>
+        </div>
+        <div class="tabs">
+          <button id="tab-service" type="button" class="tab-btn active">🛠️ Service</button>
+          <button id="tab-blender" type="button" class="tab-btn">🧱 Blender</button>
+        </div>
+        <pre id="logs"></pre>
+      </section>
+    </main>
+    <script type="module" src="/main.js"></script>
+  </body>
+</html>

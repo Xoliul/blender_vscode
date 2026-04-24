@@ -1,0 +1,173 @@
+body {
+  margin: 0;
+  font-family: Arial, sans-serif;
+  background: #10141f;
+  color: #edf1f7;
+}
+
+main {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+section {
+  border: 1px solid #2f384a;
+  border-radius: 8px;
+  padding: 12px;
+  margin-bottom: 12px;
+  background: #171d2a;
+}
+
+h1,
+h2 {
+  margin-top: 0;
+  margin-bottom: 8px;
+}
+
+h2 {
+  font-size: 1.03rem;
+}
+
+.section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.status {
+  font-weight: 700;
+}
+
+.status-disconnected {
+  color: #ff7d7d;
+}
+
+.status-connected {
+  color: #7dff9a;
+}
+
+.status-connecting {
+  color: #ffd27d;
+}
+
+label {
+  display: block;
+  margin-bottom: 10px;
+}
+
+.inline-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.inline-check input[type="checkbox"] {
+  width: auto;
+}
+
+small {
+  display: block;
+  color: #aeb8ca;
+  margin: 6px 0;
+}
+
+input,
+textarea,
+button {
+  width: 100%;
+  box-sizing: border-box;
+  background: #0f1320;
+  color: #edf1f7;
+  border: 1px solid #3a4660;
+  border-radius: 6px;
+  padding: 7px 9px;
+}
+
+button {
+  cursor: pointer;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+#addon-rows {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.addon-row {
+  border: 1px solid #2d3548;
+  border-radius: 6px;
+  padding: 8px;
+}
+
+.addon-row-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 180px 140px;
+  gap: 6px;
+}
+
+.addon-row-grid > div {
+  display: grid;
+  gap: 4px;
+}
+
+.path-input-wrap {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 4px;
+}
+
+.btn-icon {
+  width: 34px;
+  min-width: 34px;
+  padding: 6px 0;
+  text-align: center;
+  font-size: 16px;
+}
+
+.btn-compact {
+  width: auto;
+  min-width: 0;
+  padding: 5px 8px;
+  font-size: 0.9rem;
+}
+
+.row-compact {
+  grid-template-columns: auto auto 1fr;
+}
+
+.tabs {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.tab-btn {
+  width: auto;
+  padding: 5px 10px;
+  font-size: 0.9rem;
+  opacity: 0.78;
+}
+
+.tab-btn.active {
+  opacity: 1;
+  border-color: #6f88b5;
+}
+
+#logs {
+  white-space: pre-wrap;
+  min-height: 260px;
+  max-height: 360px;
+  overflow: auto;
+  background: #0c101a;
+  padding: 10px;
+  border-radius: 6px;
+}

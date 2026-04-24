@@ -1,4 +1,5 @@
 import logging
+import os
 import random
 import threading
 import time
@@ -24,6 +25,12 @@ DEBUGPY_PORT = None
 SERVER = flask.Flask("Blender Server")
 SERVER.logger.setLevel(logging.DEBUG if LOG_FLASK else logging.ERROR)
 POST_HANDLERS = {}
+LOG_FORWARD_HANDLER = None
+
+
+def _wait_for_debugger_enabled() -> bool:
+    raw = (os.environ.get("VSCODE_WAIT_FOR_DEBUGGER", "1") or "1").strip().lower()
+    return raw not in {"0", "false", "no", "off"}
 
 
 def setup(address: str, path_mappings):
@@ -32,12 +39,16 @@ def setup(address: str, path_mappings):
 
     OWN_SERVER_PORT = start_own_server()
     DEBUGPY_PORT = start_debug_server()
+    enable_log_forwarding()
 
     send_connection_information(path_mappings)
 
-    LOG.info("Waiting for debug client.")
-    debugpy.wait_for_client()
-    LOG.info("Debug client attached.")
+    if _wait_for_debugger_enabled():
+        LOG.info("Waiting for debug client.")
+        debugpy.wait_for_client()
+        LOG.info("Debug client attached.")
+    else:
+        LOG.info("Debug client wait disabled by VSCODE_WAIT_FOR_DEBUGGER.")
 
 
 def start_own_server():
@@ -165,6 +176,55 @@ def send_dict_as_json(data):
     requests.post(EDITOR_ADDRESS, json=data)
 
 
+class RemoteLogHandler(logging.Handler):
+    def emit(self, record):
+        if EDITOR_ADDRESS is None:
+            return
+
+        if record.name.startswith("urllib3") or record.name.startswith("requests"):
+            return
+
+        try:
+            message = record.getMessage()
+            requests.post(
+                EDITOR_ADDRESS,
+                json={
+                    "type": "blenderLog",
+                    "level": record.levelname.lower(),
+                    "message": message,
+                    "logger": record.name,
+                },
+                timeout=0.4,
+            )
+        except Exception:
+            # Avoid recursive logging if transport fails.
+            return
+
+
+def enable_log_forwarding():
+    global LOG_FORWARD_HANDLER
+    if LOG_FORWARD_HANDLER is not None:
+        return
+
+    handler = RemoteLogHandler()
+    handler.setLevel(logging.INFO)
+    logging.getLogger().addHandler(handler)
+    LOG_FORWARD_HANDLER = handler
+
+
+def set_editor_address(data):
+    global EDITOR_ADDRESS
+
+    value = data.get("editorAddress")
+    if isinstance(value, str) and value != "":
+        EDITOR_ADDRESS = value
+
+    if data.get("forwardLogs", False):
+        enable_log_forwarding()
+
+    return "OK"
+
+
 # Utils
 ###############################
 
@@ -183,3 +243,6 @@ def get_debugpy_port():
 
 def get_editor_address():
     return EDITOR_ADDRESS
+
+
+register_post_handler("setEditorAddress", set_editor_address)
