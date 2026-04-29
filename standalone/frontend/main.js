@@ -13,6 +13,8 @@ const installsSelectEl = document.querySelector("#installs-select");
 const runningSelectEl = document.querySelector("#running-select");
 const tabServiceEl = document.querySelector("#tab-service");
 const tabBlenderEl = document.querySelector("#tab-blender");
+const copyServiceLogsBtnEl = document.querySelector("#copy-service-logs-btn");
+const copyBlenderLogsBtnEl = document.querySelector("#copy-blender-logs-btn");
 
 const logBuffers = {
   service: [],
@@ -20,6 +22,10 @@ const logBuffers = {
 };
 let activeLogTab = "service";
 const maxLogLinesPerTab = 2000;
+const crashContextLinesRemaining = {
+  service: 0,
+  blender: 0
+};
 
 function stripAnsi(text) {
   return text.replace(/\u001b\[[0-9;]*m/g, "");
@@ -50,9 +56,13 @@ function appendLogToTab(tab, text) {
   if (!logBuffers[tab]) {
     return;
   }
-  const lines = String(text).split("\n");
+  const lines = String(text).replace(/\r\n/g, "\n").replace(/\r/g, "\n").split("\n");
   for (const line of lines) {
-    logBuffers[tab].push(line);
+    const tone = getLogLineTone(tab, line);
+    logBuffers[tab].push({
+      text: line,
+      tone
+    });
   }
   if (logBuffers[tab].length > maxLogLinesPerTab) {
     logBuffers[tab].splice(0, logBuffers[tab].length - maxLogLinesPerTab);
@@ -62,8 +72,56 @@ function appendLogToTab(tab, text) {
   }
 }
 
+function escapeHtml(text) {
+  return String(text)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;");
+}
+
+function getLogLineTone(tab, line) {
+  const normalized = String(line || "").toLowerCase();
+  if (!normalized.trim()) {
+    return "neutral";
+  }
+  const crashMarker = normalized.includes("exception_access_violation")
+    || normalized.includes(".crash.txt")
+    || normalized.includes("segmentation fault")
+    || /\b(fatal signal|abort trap)\b/i.test(normalized);
+
+  if (crashMarker) {
+    crashContextLinesRemaining[tab] = 8;
+    return "crash";
+  }
+
+  if (crashContextLinesRemaining[tab] > 0) {
+    crashContextLinesRemaining[tab] -= 1;
+    return "crash";
+  }
+
+  const hasErrorWord = /\b(error|exception|traceback|fatal|failed|failure|crash|timeout)\b/i.test(normalized);
+  const noisyWrapperOnly = /\[(warn|warning)\]\s+\[(stderr)\]/i.test(line)
+    && !hasErrorWord
+    && !normalized.includes("winerror")
+    && !normalized.includes("access violation");
+
+  if (noisyWrapperOnly) {
+    return tab === "blender" ? "muted" : "neutral";
+  }
+  if (hasErrorWord || normalized.includes("winerror") || normalized.includes("access violation")) {
+    return "error";
+  }
+  if (/\bwarn(ing)?\b/i.test(normalized)) {
+    return "warning";
+  }
+  return "neutral";
+}
+
 function renderActiveLogTab() {
-  logsEl.textContent = `${logBuffers[activeLogTab].join("\n")}${logBuffers[activeLogTab].length > 0 ? "\n" : ""}`;
+  const lines = logBuffers[activeLogTab]
+    .map((entry) => `<span class="log-line log-line-${entry.tone}">${escapeHtml(entry.text)}</span>`)
+    .join("\n");
+  logsEl.innerHTML = lines;
   logsEl.scrollTop = logsEl.scrollHeight;
 }
 
@@ -72,6 +130,36 @@ function setActiveLogTab(tab) {
   tabServiceEl.classList.toggle("active", tab === "service");
   tabBlenderEl.classList.toggle("active", tab === "blender");
   renderActiveLogTab();
+}
+
+function clearLogTab(tab) {
+  if (!logBuffers[tab]) {
+    return;
+  }
+  logBuffers[tab] = [];
+  crashContextLinesRemaining[tab] = 0;
+  if (tab === activeLogTab) {
+    renderActiveLogTab();
+  }
+}
+
+function getLogTextForTab(tab) {
+  return logBuffers[tab].map((entry) => entry.text).join("\n");
+}
+
+async function copyLogTab(tab, buttonEl) {
+  try {
+    await navigator.clipboard.writeText(getLogTextForTab(tab));
+    if (buttonEl) {
+      const previous = buttonEl.textContent;
+      buttonEl.textContent = "Copied";
+      setTimeout(() => {
+        buttonEl.textContent = previous;
+      }, 900);
+    }
+  } catch (error) {
+    appendLog(`Copy ${tab} logs failed: ${String(error)}`);
+  }
 }
 
 function setConnectionState(text, kind) {
@@ -387,8 +475,14 @@ document.querySelector("#add-addon-row-btn").addEventListener("click", () => {
 });
 
 document.querySelector("#clear-logs-btn").addEventListener("click", () => {
-  logBuffers[activeLogTab] = [];
-  renderActiveLogTab();
+  clearLogTab(activeLogTab);
+});
+
+copyServiceLogsBtnEl.addEventListener("click", () => {
+  void copyLogTab("service", copyServiceLogsBtnEl);
+});
+copyBlenderLogsBtnEl.addEventListener("click", () => {
+  void copyLogTab("blender", copyBlenderLogsBtnEl);
 });
 
 tabServiceEl.addEventListener("click", () => setActiveLogTab("service"));
@@ -407,6 +501,11 @@ function connectEvents() {
       const base = `${payload.timestamp} [${payload.level}] ${payload.message}`;
       const rendered = detailsText ? `${base}\n${detailsText}` : base;
       appendLogToTab(tab, rendered);
+      return;
+    }
+    if (payload.type === "blender_lifecycle" && payload.state === "starting") {
+      setActiveLogTab("blender");
+      appendLogToTab("service", `${payload.timestamp} Blender is starting (${payload.startReason || "unknown"}).`);
       return;
     }
     appendLogToTab("service", `${payload.timestamp} ${payload.type}`);

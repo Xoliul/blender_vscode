@@ -35,6 +35,12 @@ h2 {
   justify-content: space-between;
 }
 
+.log-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
 .status {
   font-weight: 700;
 }
@@ -170,4 +176,22 @@ button {
   background: #0c101a;
   padding: 10px;
   border-radius: 6px;
+}
+
+.log-line {
+  display: block;
+  line-height: 1.35;
+}
+
+.log-line-muted {
+  color: #98a2b3;
+}
+
+.log-line-warning {
+  color: #ffd27d;
+}
+
+.log-line-error,
+.log-line-crash {
+  color: #ff7d7d;
 }

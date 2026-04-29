@@ -80,7 +80,11 @@
       <section>
         <div class="section-header">
           <h2>📋 Logs</h2>
-          <button id="clear-logs-btn" type="button" class="btn-icon" title="Clear logs">🗑️</button>
+          <div class="log-actions">
+            <button id="copy-service-logs-btn" type="button" class="btn-compact" title="Copy service logs">Copy Service</button>
+            <button id="copy-blender-logs-btn" type="button" class="btn-compact" title="Copy Blender logs">Copy Blender</button>
+            <button id="clear-logs-btn" type="button" class="btn-icon" title="Clear active log tab">🗑️</button>
+          </div>
         </div>
         <div class="tabs">
           <button id="tab-service" type="button" class="tab-btn active">🛠️ Service</button>

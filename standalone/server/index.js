@@ -600,7 +600,7 @@ function getBlenderEnv(recoveryBlendPath = null) {
   };
 }
 
-async function startBlender(recoveryBlendPath = null) {
+async function startBlender(recoveryBlendPath = null, startReason = "manual") {
   if (blenderProcess) {
     throw new Error("Blender process already running");
   }
@@ -612,6 +612,11 @@ async function startBlender(recoveryBlendPath = null) {
 
   blenderStopRequested = false;
   blenderCrashSuspected = false;
+  emit("blender_lifecycle", {
+    state: "starting",
+    recoveryBlendPath: recoveryBlendPath || null,
+    startReason
+  });
   blenderProcess = spawn(config.blenderExecutable, args, {
     cwd: repoRoot,
     env
@@ -643,6 +648,7 @@ async function startBlender(recoveryBlendPath = null) {
     blenderProcess = null;
     activeInstance = null;
     emit("instance_state", { connected: false, instance: null });
+    emit("blender_lifecycle", { state: "stopped", code, signal });
     const shouldRestart = config.mode === "launch"
       && config.autoRestartOnCrash
       && !blenderStopRequested
@@ -663,7 +669,7 @@ async function startBlender(recoveryBlendPath = null) {
             logLine("warn", "Auto-restart could not find a recovery/autosave .blend file.");
           }
         }
-        await startBlender(recoveryBlendPath);
+        await startBlender(recoveryBlendPath, "auto-restart");
       } catch (error) {
         logLine("error", "Auto-restart failed", String(error));
       }
@@ -713,7 +719,7 @@ app.post("/api/blender/start", async (_req, res) => {
   try {
     config.mode = "launch";
     await persistConfig();
-    await startBlender();
+    await startBlender(null, "manual");
     res.json({ ok: true });
   } catch (error) {
     res.status(400).json({ ok: false, error: String(error) });
