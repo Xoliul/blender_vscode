@@ -15,17 +15,30 @@ const tabServiceEl = document.querySelector("#tab-service");
 const tabBlenderEl = document.querySelector("#tab-blender");
 const copyServiceLogsBtnEl = document.querySelector("#copy-service-logs-btn");
 const copyBlenderLogsBtnEl = document.querySelector("#copy-blender-logs-btn");
+const logFilterInputEl = document.querySelector("#log-filter-input");
+const logFilterClearBtnEl = document.querySelector("#log-filter-clear");
 
 const logBuffers = {
   service: [],
   blender: []
 };
 let activeLogTab = "service";
-const maxLogLinesPerTab = 2000;
+const maxLogLinesPerTab = 500;
+const maxCharsPerLogLine = 4096;
 const crashContextLinesRemaining = {
   service: 0,
   blender: 0
 };
+
+/** Lowercase substring; empty means no filter. */
+let logFilterQueryLower = "";
+
+function logEntryMatchesFilter(entry) {
+  if (!logFilterQueryLower) {
+    return true;
+  }
+  return entry.text.toLowerCase().includes(logFilterQueryLower);
+}
 
 function stripAnsi(text) {
   return text.replace(/\u001b\[[0-9;]*m/g, "");
@@ -57,26 +70,43 @@ function appendLogToTab(tab, text) {
     return;
   }
   const lines = String(text).replace(/\r\n/g, "\n").replace(/\r/g, "\n").split("\n");
-  for (const line of lines) {
+  const newEntries = [];
+  for (let line of lines) {
+    if (line.length > maxCharsPerLogLine) {
+      line = `${line.slice(0, maxCharsPerLogLine)}... [+${line.length - maxCharsPerLogLine} chars]`;
+    }
     const tone = getLogLineTone(tab, line);
-    logBuffers[tab].push({
-      text: line,
-      tone
-    });
+    newEntries.push({ text: line, tone });
   }
-  if (logBuffers[tab].length > maxLogLinesPerTab) {
-    logBuffers[tab].splice(0, logBuffers[tab].length - maxLogLinesPerTab);
-  }
-  if (tab === activeLogTab) {
-    renderActiveLogTab();
-  }
-}
+  logBuffers[tab].push(...newEntries);
 
-function escapeHtml(text) {
-  return String(text)
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;");
+  const overflow = logBuffers[tab].length - maxLogLinesPerTab;
+  if (overflow > 0) {
+    logBuffers[tab].splice(0, overflow);
+  }
+
+  if (tab === activeLogTab) {
+    if (logFilterQueryLower) {
+      renderActiveLogTab();
+    } else {
+      if (overflow > 0) {
+        for (let i = 0; i < overflow && logsEl.firstChild; i++) {
+          logsEl.removeChild(logsEl.firstChild);
+        }
+      }
+      if (newEntries.length > 0) {
+        const fragment = document.createDocumentFragment();
+        for (const entry of newEntries) {
+          const span = document.createElement("span");
+          span.className = `log-line log-line-${entry.tone}`;
+          span.textContent = entry.text;
+          fragment.appendChild(span);
+        }
+        logsEl.appendChild(fragment);
+        logsEl.scrollTop = logsEl.scrollHeight;
+      }
+    }
+  }
 }
 
 function getLogLineTone(tab, line) {
@@ -118,10 +148,18 @@ function getLogLineTone(tab, line) {
 }
 
 function renderActiveLogTab() {
-  const lines = logBuffers[activeLogTab]
-    .map((entry) => `<span class="log-line log-line-${entry.tone}">${escapeHtml(entry.text)}</span>`)
-    .join("\n");
-  logsEl.innerHTML = lines;
+  logsEl.replaceChildren();
+  const fragment = document.createDocumentFragment();
+  for (const entry of logBuffers[activeLogTab]) {
+    if (!logEntryMatchesFilter(entry)) {
+      continue;
+    }
+    const span = document.createElement("span");
+    span.className = `log-line log-line-${entry.tone}`;
+    span.textContent = entry.text;
+    fragment.appendChild(span);
+  }
+  logsEl.appendChild(fragment);
   logsEl.scrollTop = logsEl.scrollHeight;
 }
 
@@ -144,7 +182,10 @@ function clearLogTab(tab) {
 }
 
 function getLogTextForTab(tab) {
-  return logBuffers[tab].map((entry) => entry.text).join("\n");
+  return logBuffers[tab]
+    .filter(logEntryMatchesFilter)
+    .map((entry) => entry.text)
+    .join("\n");
 }
 
 async function copyLogTab(tab, buttonEl) {
@@ -488,10 +529,36 @@ copyBlenderLogsBtnEl.addEventListener("click", () => {
 tabServiceEl.addEventListener("click", () => setActiveLogTab("service"));
 tabBlenderEl.addEventListener("click", () => setActiveLogTab("blender"));
 
+logFilterInputEl.addEventListener("input", () => {
+  logFilterQueryLower = logFilterInputEl.value.trim().toLowerCase();
+  renderActiveLogTab();
+});
+
+logFilterClearBtnEl.addEventListener("click", () => {
+  logFilterInputEl.value = "";
+  logFilterQueryLower = "";
+  renderActiveLogTab();
+  logFilterInputEl.focus();
+});
+
+/** One EventSource; avoid duplicate connections if connectEvents runs again. */
+let logEventSource = null;
+let lastStreamDisconnectLogMs = 0;
+
 function connectEvents() {
+  if (logEventSource) {
+    logEventSource.close();
+    logEventSource = null;
+  }
   const events = new EventSource("/api/events");
+  logEventSource = events;
   events.onmessage = (event) => {
-    const payload = JSON.parse(event.data);
+    let payload;
+    try {
+      payload = JSON.parse(event.data);
+    } catch {
+      return;
+    }
     if (payload.type === "instance_state") {
       setConnectionState(payload.connected ? "Connected" : "Disconnected", payload.connected ? "connected" : "disconnected");
     }
@@ -512,9 +579,20 @@ function connectEvents() {
   };
   events.onerror = () => {
     setConnectionState("Disconnected", "disconnected");
-    appendLogToTab("service", "Event stream disconnected. Retrying automatically...");
+    const now = Date.now();
+    if (now - lastStreamDisconnectLogMs > 20000) {
+      lastStreamDisconnectLogMs = now;
+      appendLogToTab("service", "Event stream disconnected. Retrying automatically...");
+    }
   };
 }
+
+window.addEventListener("pagehide", () => {
+  if (logEventSource) {
+    logEventSource.close();
+    logEventSource = null;
+  }
+});
 
 await loadConfig();
 connectEvents();

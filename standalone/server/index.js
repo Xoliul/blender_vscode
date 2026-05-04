@@ -23,6 +23,33 @@ const webPort = Number(process.env.STANDALONE_WEB_PORT ?? 19321);
 const debounceMsDefault = 250;
 const execAsync = promisify(exec);
 
+/** Bound log payloads so SSE/console/UI cannot retain multi‑MB lines. */
+const MAX_LOG_MESSAGE_CHARS = 4096;
+const MAX_LOG_DETAILS_CHARS = 16384;
+
+function truncateLogString(value, maxChars) {
+  const s = String(value);
+  if (s.length <= maxChars) {
+    return s;
+  }
+  const omitted = s.length - maxChars;
+  return `${s.slice(0, maxChars)}\n...[truncated ${omitted} chars]`;
+}
+
+function formatLogDetailsForWire(details) {
+  if (details === undefined || details === null) {
+    return undefined;
+  }
+  if (typeof details === "string") {
+    return truncateLogString(details, MAX_LOG_DETAILS_CHARS);
+  }
+  try {
+    return truncateLogString(JSON.stringify(details), MAX_LOG_DETAILS_CHARS);
+  } catch {
+    return truncateLogString(String(details), MAX_LOG_DETAILS_CHARS);
+  }
+}
+
 const app = express();
 app.use(cors());
 app.use(express.json({ limit: "2mb" }));
@@ -76,8 +103,10 @@ function emit(type, payload = {}) {
 }
 
 function emitLog(stream, level, message, details = undefined) {
-  const suffix = details === undefined ? "" : ` ${typeof details === "string" ? details : JSON.stringify(details)}`;
-  const line = `[${new Date().toISOString()}] [${level}] ${message}${suffix}`;
+  const safeMessage = truncateLogString(message, MAX_LOG_MESSAGE_CHARS);
+  const safeDetails = formatLogDetailsForWire(details);
+  const suffix = safeDetails === undefined ? "" : ` ${safeDetails}`;
+  const line = `[${new Date().toISOString()}] [${level}] ${safeMessage}${suffix}`;
   if (level === "error" || level === "warn") {
     // Mirror to stderr/stdout so CLI users can read logs without the UI.
     // eslint-disable-next-line no-console
@@ -86,7 +115,7 @@ function emitLog(stream, level, message, details = undefined) {
     // eslint-disable-next-line no-console
     console.log(line);
   }
-  emit("log", { stream, level, message, details });
+  emit("log", { stream, level, message: safeMessage, details: safeDetails });
 }
 
 function logLine(level, message, details = undefined) {

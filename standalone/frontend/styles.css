@@ -150,6 +150,23 @@ button {
   grid-template-columns: auto auto 1fr;
 }
 
+.log-filter-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.log-filter-row input {
+  flex: 1;
+  min-width: 0;
+  width: auto;
+}
+
+.log-filter-row .btn-icon {
+  flex-shrink: 0;
+}
+
 .tabs {
   display: flex;
   gap: 6px;

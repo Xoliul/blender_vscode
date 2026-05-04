@@ -7,6 +7,7 @@ import { attachPythonDebuggerToBlender } from './python_debugging';
 import { BlenderTask } from './blender_executable';
 
 const RESPONSIVE_LIMIT_MS = 1000;
+const MAX_STORED_CONNECTION_ERRORS = 40;
 
 type JsonPayload = Record<string, unknown>;
 
@@ -42,11 +43,18 @@ export class BlenderInstance {
         await axios.post(this.address, data);
     }
 
+    recordConnectionError(error: unknown): void {
+        this.connectionErrors.push(error instanceof Error ? error : new Error(String(error)));
+        if (this.connectionErrors.length > MAX_STORED_CONNECTION_ERRORS) {
+            this.connectionErrors.splice(0, this.connectionErrors.length - MAX_STORED_CONNECTION_ERRORS);
+        }
+    }
+
     async ping(): Promise<void> {
         try {
             await axios.get(`${this.address}/ping`);
         } catch (error) {
-            this.connectionErrors.push(error instanceof Error ? error : new Error(String(error)));
+            this.recordConnectionError(error);
             throw error;
         }
     }
@@ -132,11 +140,11 @@ export class RunningBlenderInstances {
             const instance = this.instances[index];
             try {
                 const promise = instance.post(data).catch((error) => {
-                    instance.connectionErrors.push(error instanceof Error ? error : new Error(String(error)));
+                    instance.recordConnectionError(error);
                 });
                 pending.push(promise);
             } catch (error) {
-                instance.connectionErrors.push(error instanceof Error ? error : new Error(String(error)));
+                instance.recordConnectionError(error);
             }
         }
 
@@ -147,10 +155,10 @@ export class RunningBlenderInstances {
         for (const instance of this.instances) {
             try {
                 void instance.post(data).catch((error) => {
-                    instance.connectionErrors.push(error instanceof Error ? error : new Error(String(error)));
+                    instance.recordConnectionError(error);
                 });
             } catch (error) {
-                instance.connectionErrors.push(error instanceof Error ? error : new Error(String(error)));
+                instance.recordConnectionError(error);
             }
         }
     }
@@ -251,7 +259,7 @@ function handleRequest(request: IncomingMessage, response: ServerResponse): void
                         RunningBlenders.getTask(instance.vscodeIdentifier)?.onStartDebugging();
                     })
                     .catch((error: unknown) => {
-                        instance.connectionErrors.push(error instanceof Error ? error : new Error(String(error)));
+                        instance.recordConnectionError(error);
                         vscode.window.showErrorMessage('Failed to attach debugger to Blender instance.');
                     });
                 break;

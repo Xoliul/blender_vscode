@@ -144,7 +144,7 @@ async function reloadAddons(addons: AddonWorkspaceFolder[]) {
     let dirs = await Promise.all(addons.map(a => a.getSourceDirectory()));
     instances.forEach((instance) => {
         void instance.post({ type: 'reload', names: names, dirs: dirs }).catch((error) => {
-            instance.connectionErrors.push(error instanceof Error ? error : new Error(String(error)));
+            instance.recordConnectionError(error);
         });
     });
 }

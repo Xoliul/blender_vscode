@@ -26,6 +26,7 @@ SERVER = flask.Flask("Blender Server")
 SERVER.logger.setLevel(logging.DEBUG if LOG_FLASK else logging.ERROR)
 POST_HANDLERS = {}
 LOG_FORWARD_HANDLER = None
+MAX_FORWARDED_LOG_MESSAGE_CHARS = 12000
 
 
 def _wait_for_debugger_enabled() -> bool:
@@ -186,6 +187,12 @@ class RemoteLogHandler(logging.Handler):
 
         try:
             message = record.getMessage()
+            if len(message) > MAX_FORWARDED_LOG_MESSAGE_CHARS:
+                omitted = len(message) - MAX_FORWARDED_LOG_MESSAGE_CHARS
+                message = (
+                    message[:MAX_FORWARDED_LOG_MESSAGE_CHARS]
+                    + f"\n...[truncated {omitted} chars]"
+                )
             requests.post(
                 EDITOR_ADDRESS,
                 json={
